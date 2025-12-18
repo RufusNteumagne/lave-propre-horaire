@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  SUPERVISOR
+  EMPLOYEE
+}
+
+enum ShiftStatus {
+  PLANNED
+  CONFIRMED
+  DONE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  role      Role     @default(EMPLOYEE)
+  active    Boolean  @default(true)
+
+  name      String
+  email     String   @unique
+  phone     String?
+  password  String   // bcrypt hash
+
+  employmentType String?
+  hourlyRate      Int?   // cents per hour (ex: 2000 = 20.00$/h)
+
+  shifts    Shift[]
+  siteAccess SiteAccess[]
+}
+
+model Site {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name      String   @unique
+  address   String?
+  city      String?
+  frequency String?
+  defaultDurationMin Int @default(180)
+  notes     String?
+
+  shifts    Shift[]
+  siteAccess SiteAccess[]
+}
+
+model SiteAccess {
+  id     String @id @default(cuid())
+  userId String
+  siteId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, siteId])
+}
+
+model Shift {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dayOfWeek Int      // 1=Mon ... 7=Sun
+  startMin  Int      // minutes from 00:00
+  endMin    Int
+  checklist String?
+  status    ShiftStatus @default(PLANNED)
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  siteId    String
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Restrict)
+}
